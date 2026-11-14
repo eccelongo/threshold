@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>THE LAST ROOM — prototype</title>
+<meta name="theme-color" content="#050505">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500&family=Space+Grotesk:wght@300;400&family=Cormorant+Garamond:ital,wght@1,400&display=swap" rel="stylesheet">
+<style>
+  :root{ --bone:#E5E2DA; --black:#050505; --pad:clamp(14px,2.4vw,36px); --ease:cubic-bezier(.77,0,.18,1); }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--black)}
+  body{color:var(--bone);font-family:'Space Grotesk',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a,button{color:inherit;font:inherit;background:none;border:0}
+  :focus-visible{outline:1px solid var(--bone);outline-offset:5px}
+  .cap{font-size:10.5px;letter-spacing:.3em;text-transform:uppercase;line-height:1.7}
+  .dim{opacity:.5}
+  #stage{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .grain{position:fixed;inset:-50%;pointer-events:none;opacity:.09;mix-blend-mode:screen;z-index:5;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    animation:g .8s steps(4) infinite}
+  @keyframes g{0%{transform:translate(0,0)}25%{transform:translate(-3%,2%)}50%{transform:translate(2%,-3%)}75%{transform:translate(-2%,-2%)}100%{transform:translate(0,0)}}
+  .vig{position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(0,0,0,.6) 100%)}
+  header{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;justify-content:space-between;padding:22px var(--pad);mix-blend-mode:difference}
+  .phase{position:fixed;left:var(--pad);bottom:clamp(24px,4.5vh,44px);z-index:10;display:grid;grid-template-columns:auto auto;gap:4px 18px}
+  .phase span{transition:opacity .6s}
+  .phase .off{opacity:.22}
+  .hint{position:fixed;right:var(--pad);bottom:clamp(24px,4.5vh,44px);z-index:10;text-align:right;transition:opacity 1s}
+  .final{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;opacity:0;transition:opacity 1.6s var(--ease)}
+  .final.on{opacity:1}
+  .final h1{font-family:'Oswald',sans-serif;font-weight:400;text-transform:uppercase;letter-spacing:.32em;font-size:clamp(34px,6vw,110px);line-height:1;margin-right:-.32em}
+  .final em{font-family:'Cormorant Garamond',serif;font-size:clamp(20px,2.4vw,38px);margin-top:2.2vh;opacity:.85}
+  .final .cap{margin-top:9vh}
+  .intro{position:fixed;left:var(--pad);top:16vh;z-index:10;max-width:38ch;transition:opacity 1s}
+  #scroll{height:1000vh}
+  html.locked,html.locked body{overflow:hidden}
+  .gate{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.2vh;background:var(--black);text-align:center;transition:opacity 1.6s var(--ease)}
+  .gate.gone{opacity:0;pointer-events:none}
+  .gate h1{font-family:'Oswald',sans-serif;font-weight:400;text-transform:uppercase;letter-spacing:.32em;margin-right:-.32em;font-size:clamp(30px,5vw,90px)}
+  .gate .btns{display:flex;flex-direction:column;gap:14px;margin-top:2vh}
+  .gate button{padding:12px 26px;border:1px solid rgba(229,226,218,.35);transition:border-color .5s,background .5s}
+  .gate button:hover,.gate button:focus-visible{border-color:var(--bone);background:rgba(229,226,218,.06)}
+  .gate button.primary{border-color:var(--bone)}
+  .gate .note{max-width:44ch}
+  .snd{padding:2px 0;pointer-events:auto}
+  header{pointer-events:none}header>*{pointer-events:auto}
+  @media (max-width:760px){.hint{display:none}}
+  @media (prefers-reduced-motion:reduce){.grain{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<div class="vig" aria-hidden="true"></div>
+<header class="cap"><span>The Last Room</span><button class="snd" id="snd" aria-pressed="false">Sound off</button></header>
+<div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <p class="cap dim">An audiovisual environment</p>
+  <h1 id="gateTitle">The last room</h1>
+  <div class="btns">
+    <button class="cap primary" id="enterSound">Activate sound — recommended</button>
+    <button class="cap" id="enterSilent">Enter the experience</button>
+  </div>
+  <p class="cap dim note">Headphones recommended. The experience can be followed without sound; the sound control stays at the top right.</p>
+</div>
+<p class="intro cap" id="intro">An object, floating in the dark.<br><span class="dim">It stands for every convention you were given.</span></p>
+<div class="phase cap" id="phase" aria-hidden="true">
+  <span>01</span><span data-p="0">The object</span>
+  <span>02</span><span data-p="1">Deconstruction</span>
+  <span>03</span><span data-p="2">Reconstruction</span>
+  <span>04</span><span data-p="3">The last room</span>
+</div>
+<p class="hint cap dim" id="hint">Move — the fragments<br>step aside for you</p>
+<div class="final" id="final">
+  <h1>The last room</h1>
+  <em>Nothing stays in its original form.</em>
+  <p class="cap dim">We don't destroy to disappear. We destroy to redefine.</p>
+</div>
+<main id="scroll" aria-label="The Last Room — scroll to deconstruct and reconstruct"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+import { createSound } from './sound.js';
+
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+scrollTo(0, 0);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const small = innerWidth < 760 || matchMedia('(pointer: coarse)').matches;
+const clamp01 = v => Math.min(1, Math.max(0, v));
+const smooth = (a, b, v) => { const x = clamp01((v - a) / (b - a)); return x * x * (3 - 2 * x); };
+
+/* ---------- scroll & pointer ---------- */
+let lenis = null;
+if (!reduced && window.Lenis){ lenis = new Lenis({ lerp: .07 }); lenis.stop(); (function raf(t){ lenis.raf(t); requestAnimationFrame(raf); })(0); }
+
+/* ---------- one sound engine for the whole journey; it only starts after an explicit choice ---------- */
+const sound = createSound({ reduced, light: innerWidth < 760 || matchMedia('(pointer: coarse)').matches });
+const sndBtn = document.getElementById('snd'), gate = document.getElementById('gate');
+const setSound = v => { sound.setOn(v); sndBtn.textContent = v ? 'Sound on' : 'Sound off'; sndBtn.setAttribute('aria-pressed', v); };
+sndBtn.addEventListener('click', () => setSound(!sound.on));
+document.documentElement.classList.add('locked');
+const enter = withSound => { if (withSound) setSound(true); gate.classList.add('gone'); gate.setAttribute('aria-hidden', 'true'); document.documentElement.classList.remove('locked'); lenis && lenis.start(); };
+document.getElementById('enterSound').addEventListener('click', () => enter(true));
+document.getElementById('enterSilent').addEventListener('click', () => enter(false));
+document.getElementById('enterSound').focus();
+const scrollEl = document.getElementById('scroll');
+const progress = () => clamp01(scrollY / (scrollEl.offsetHeight - innerHeight));
+const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
+addEventListener('pointermove', e => { mouse.x = e.clientX / innerWidth * 2 - 1; mouse.y = -(e.clientY / innerHeight * 2 - 1); });
+
+/* ---------- renderer ---------- */
+const canvas = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !small, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, small ? 1.5 : 1.75));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+const BLACK = new THREE.Color('#050505');
+scene.background = BLACK.clone(); scene.fog = new THREE.FogExp2(BLACK.clone(), .012);
+const camera = new THREE.PerspectiveCamera(small ? 52 : 38, innerWidth / innerHeight, .1, 1600);
+const env = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), .04).texture;
+
+/* ---------- light: a key from above, a cold rim, and a light inside the object ---------- */
+scene.add(new THREE.HemisphereLight(0x9a9896, 0x050505, .35));
+const key = new THREE.DirectionalLight(0xfff1e2, 3.2); key.position.set(-24, 40, 30); scene.add(key);
+const rim = new THREE.DirectionalLight(0xd8e2ee, 2.4); rim.position.set(14, 22, -50); scene.add(rim);
+const core = new THREE.PointLight(0xf0dcc0, 0, 40, 1.6); core.position.set(0, 18, 0); scene.add(core);
+
+/* ---------- concrete texture ---------- */
+function concreteTex(size, tone){
+  const c = document.createElement('canvas'); c.width = c.height = size; const g = c.getContext('2d');
+  g.fillStyle = tone; g.fillRect(0, 0, size, size);
+  for (let i = 0; i < 160; i++){ const x = Math.random() * size, y = Math.random() * size, r = size * (.03 + Math.random() * .14), gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, Math.random() < .6 ? `rgba(0,0,0,${Math.random() * .3})` : `rgba(255,255,255,${Math.random() * .06})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r); }
+  const img = g.getImageData(0, 0, size, size), d = img.data; for (let i = 0; i < d.length; i += 4){ const n = (Math.random() - .5) * 40; d[i] += n; d[i + 1] += n; d[i + 2] += n; } g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const tex = concreteTex(small ? 256 : 512, '#5a5753');
+
+/* ---------- four matters ---------- */
+const MATS = [
+  new THREE.MeshStandardMaterial({ color: 0x3a3836, map: tex, bumpMap: tex, bumpScale: 1.5, roughness: .92, flatShading: true }),                 // black concrete
+  new THREE.MeshStandardMaterial({ color: 0x4a3226, roughness: .6, metalness: .65, map: tex, bumpMap: tex, bumpScale: .8, flatShading: true }),    // oxidised metal
+  new THREE.MeshStandardMaterial({ color: 0x6a6660, map: tex, bumpMap: tex, bumpScale: 2.2, roughness: 1, flatShading: true }),                    // raw stone
+  new THREE.MeshStandardMaterial({ color: 0x2c2c2c, metalness: 1, roughness: .16, envMap: env, envMapIntensity: .55, flatShading: true }),         // dark chrome
+];
+const WEIGHT = [.42, .16, .26, .16];
+
+/* ---------- the gate: the new architecture the fragments will build ---------- */
+const CELL = small ? 2.3 : 1.62;
+const gateCells = [];
+{
+  const postW = Math.round(6.4 / CELL), depth = Math.round(4.8 / CELL), height = Math.round(28.8 / CELL), open = Math.round(12.8 / CELL), lintH = Math.round(6.4 / CELL);
+  const totalW = postW * 2 + open, x0 = -totalW * CELL / 2 + CELL / 2, GZ = -34;
+  for (let ix = 0; ix < totalW; ix++) for (let iy = 0; iy < height + lintH; iy++) for (let iz = 0; iz < depth; iz++){
+    const inPost = ix < postW || ix >= postW + open, inLintel = iy >= height;
+    if (!inPost && !inLintel) continue;
+    gateCells.push(new THREE.Vector3(x0 + ix * CELL, iy * CELL + CELL / 2, GZ + (iz - (depth - 1) / 2) * CELL));
+  }
+}
+const N = gateCells.length;
+
+/* ---------- the object: a twisted, swelling mass, impossible to name ---------- */
+const OC = new THREE.Vector3(0, 18, 0);
+function insideObject(p){
+  const y = p.y - (OC.y - 15); if (y < 0 || y > 30) return false;
+  const t = y / 30, tw = t * 1.9 - .4, c = Math.cos(tw), s = Math.sin(tw);
+  const cx = Math.sin(t * 3.4) * 3.2, x = p.x - cx, z = p.z;
+  const lx = x * c - z * s, lz = x * s + z * c;
+  const w = 4.2 + Math.sin(t * Math.PI) * 3.4 - Math.max(0, .5 - Math.abs(t - .62)) * 3.4, d = 2.6 + Math.cos(t * 5.2) * 1.1;
+  // a hollow runs through it
+  const hole = Math.hypot(lx - .8, (y - 18) * .55) < 2.2 && Math.abs(lz) < d;
+  return Math.abs(lx) < w && Math.abs(lz) < d && !hole;
+}
+const A = [];
+while (A.length < N){ const p = new THREE.Vector3((Math.random() - .5) * 24, OC.y - 15 + Math.random() * 30, (Math.random() - .5) * 16); if (insideObject(p)) A.push(p); }
+// keep the fragments' journey readable: sort both shapes bottom-up, so the lower part of the object builds the base of the gate
+A.sort((a, b) => a.y - b.y); gateCells.sort((a, b) => a.y - b.y || a.x - b.x);
+
+/* ---------- fragments ---------- */
+const frag = [];
+const counts = [0, 0, 0, 0], kind = [];
+for (let i = 0; i < N; i++){ let r = Math.random(), k = 0; while (k < 3 && r > WEIGHT[k]){ r -= WEIGHT[k]; k++; } kind.push(k); counts[k]++; }
+const meshes = MATS.map((m, k) => { const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), m, Math.max(1, counts[k])); im.frustumCulled = false; scene.add(im); return im; });
+const slot = [0, 0, 0, 0];
+const rq = () => new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3));
+for (let i = 0; i < N; i++){
+  const a = A[i], dirOut = a.clone().sub(OC); dirOut.y *= .6; dirOut.normalize();
+  // suspended: scattered around the camera's path, so the visitor walks through them
+  const C = new THREE.Vector3(
+    a.x * 1.6 + dirOut.x * (6 + Math.random() * 12) + (Math.random() - .5) * 8,
+    OC.y + (a.y - OC.y) * 1.25 + (Math.random() - .5) * 8,
+    a.z + 4 + Math.random() * 34);                                   // the cloud stretches towards the visitor, around their path
+  frag.push({
+    k: kind[i], idx: slot[kind[i]]++,
+    A: a, C, B: gateCells[i],
+    qA: rq(), qC: rq(), qB: new THREE.Quaternion(),
+    sA: new THREE.Vector3(2.2 + Math.random() * 1.6, 1.6 + Math.random() * 1.8, 1.8 + Math.random() * 1.4).multiplyScalar(small ? 1.35 : 1),
+    sB: new THREE.Vector3(CELL * .985, CELL * .985, CELL * .985),
+    crack: dirOut.clone().multiplyScalar(.35 + Math.random() * .6),
+    delay: Math.random() * .08 + (a.y - (OC.y - 15)) / 30 * .05,
+    push: new THREE.Vector3(),
+  });
+}
+
+/* ---------- the last room: an infinite dark field, pillars, a line of light ---------- */
+const last = new THREE.Group(); scene.add(last);
+let mirror = null;
+if (!small){ mirror = new Reflector(new THREE.PlaneGeometry(2400, 2400), { textureWidth: innerWidth * .5, textureHeight: innerHeight * .5, color: 0x3a3a3a, clipBias: .003 });
+  mirror.rotation.x = -Math.PI / 2; mirror.position.set(0, 0, -900); last.add(mirror); }
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: .2, metalness: .3, transparent: true, opacity: .0 });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), floorMat); floor.rotation.x = -Math.PI / 2; floor.position.set(0, .02, -900); last.add(floor);
+const PILL = small ? 80 : 220;
+const pillars = new THREE.InstancedMesh(new THREE.BoxGeometry(1.2, 60, 1.2), new THREE.MeshStandardMaterial({ color: 0x1c1b1a, roughness: .8 }), PILL);
+{ const d = new THREE.Object3D(); let i = 0;
+  for (let row = 0; row < 40 && i < PILL; row++) for (const side of [-1, 1]) for (let c = 0; c < 3 && i < PILL; c++){
+    d.position.set(side * (18 + c * 22 + row * .4), 30, -70 - row * 26); d.updateMatrix(); pillars.setMatrixAt(i++, d.matrix); } }
+last.add(pillars);
+const horizon = new THREE.Mesh(new THREE.PlaneGeometry(3000, .6), new THREE.MeshBasicMaterial({ color: 0xf2efe8, fog: false, transparent: true, opacity: 0 }));
+horizon.position.set(0, 1.2, -1500); last.add(horizon);
+const beamLine = new THREE.Mesh(new THREE.PlaneGeometry(.5, 400), new THREE.MeshBasicMaterial({ color: 0xf2efe8, fog: false, transparent: true, opacity: 0 }));
+beamLine.position.set(0, 200, -1480); last.add(beamLine);
+// light behind the opening of the gate, once it is built
+const doorLight = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 28.8), new THREE.MeshBasicMaterial({ color: 0xf0ece4, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+doorLight.position.set(0, 14.4, -37.2); scene.add(doorLight);
+
+/* ---------- camera path ---------- */
+const KF = [
+  { p: 0,    pos: [0, 14, 62],   look: [0, 18, 0] },
+  { p: .18,  pos: [6, 15, 46],   look: [0, 18, 0] },
+  { p: .45,  pos: [-2, 16, 18],  look: [0, 17, -10] },   // inside the suspended fragments
+  { p: .66,  pos: [0, 13, 22],   look: [0, 15, -34] },   // turning to the gate as it assembles
+  { p: .82,  pos: [0, 12, -10],  look: [0, 13, -40] },
+  { p: .92,  pos: [0, 11, -46],  look: [0, 11, -200] },  // through the opening
+  { p: 1,    pos: [0, 9, -90],   look: [0, 10, -400] },
+];
+const at = p => { let i = 0; while (i < KF.length - 2 && p > KF[i + 1].p) i++; const a = KF[i], b = KF[i + 1], k = smooth(a.p, b.p, p);
+  return [[0, 1, 2].map(j => a.pos[j] + (b.pos[j] - a.pos[j]) * k), [0, 1, 2].map(j => a.look[j] + (b.look[j] - a.look[j]) * k)]; };
+const look = new THREE.Vector3();
+
+/* ---------- DOM ---------- */
+const phaseEls = [...document.querySelectorAll('#phase [data-p]')], finalEl = document.getElementById('final'), introEl = document.getElementById('intro'), hintEl = document.getElementById('hint');
+
+/* ---------- loop ---------- */
+const m4 = new THREE.Matrix4(), pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), tmp = new THREE.Vector3();
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const clock = new THREE.Clock();
+let sp = 0;
+function frame(){
+  const t = clock.getElapsedTime();
+  sp += (progress() - sp) * (reduced ? 1 : .12);
+  const p = sp;
+  mouse.sx += (mouse.x - mouse.sx) * .06; mouse.sy += (mouse.y - mouse.sy) * .06;
+  const still = reduced ? 0 : 1;
+
+  // phases
+  const crack = smooth(.08, .22, p), burst = smooth(.2, .44, p), gather = smooth(.5, .76, p), lastRoom = smooth(.84, .96, p);
+  core.intensity = (crack * (1 - burst)) * 220;
+  ndc.set(mouse.sx, mouse.sy); camera.updateMatrixWorld(); ray.setFromCamera(ndc, camera);
+
+  let pushSum = 0;
+  for (const f of frag){
+    const local = (v) => clamp01((v - f.delay * 1.5) / (1 - f.delay * 1.5));
+    const b = local(burst), g = local(gather);
+    // object → cracks → suspended
+    pos.copy(f.A).addScaledVector(f.crack, crack * (1 - b));
+    pos.lerp(f.C, b * b * (3 - 2 * b));
+    // suspended → the gate
+    const ge = g * g * (3 - 2 * g);
+    pos.lerp(f.B, ge);
+    // a slow drift while suspended
+    const floatK = b * (1 - ge);
+    pos.y += Math.sin(t * .3 + f.delay * 90) * .6 * floatK * still;
+    // the fragments step aside from the cursor
+    ray.ray.closestPointToPoint(pos, tmp);
+    const dist = tmp.distanceTo(pos), push = Math.max(0, 1 - dist / 7) * (.35 + floatK * 2.4) * still;
+    f.push.lerp(tmp.subVectors(pos, tmp).normalize().multiplyScalar(push * 2.2), .1);
+    pos.add(f.push); pushSum += f.push.lengthSq();
+    q.copy(f.qA).slerp(f.qC, b).slerp(f.qB, ge);
+    if (floatK > 0) q.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(t * .05 * floatK * still, t * .07 * floatK * still, 0)));
+    sc.copy(f.sA).lerp(f.sB, ge);
+    m4.compose(pos, q, sc);
+    meshes[f.k].setMatrixAt(f.idx, m4);
+  }
+  meshes.forEach(m => m.instanceMatrix.needsUpdate = true);
+
+  // sound: scroll speed, the disturbance of the fragments, the camera's place in space, the gate locking together
+  const now = performance.now(), dt = Math.max(1, now - (frame.lt || now)) / 1000; frame.lt = now;
+  const vel = Math.abs(p - (frame.lp ?? p)) / dt; frame.lp = p;
+  const push = Math.min(1, pushSum / frag.length * 6);
+  sound.update({ p, vel, push, pan: camera.position.x / 18 + mouse.sx * .3, align: smooth(.55, .8, p) });
+  if (push > .05 && Math.abs(mouse.x - mouse.sx) > .01) sound.touch(push);
+
+  // the opening fills with light; beyond it, the last room
+  doorLight.material.opacity = smooth(.74, .86, p) * (1 - smooth(.9, .95, p)) * .9;
+  floorMat.opacity = smooth(.8, .92, p) * (mirror ? .7 : 1); if (mirror) mirror.visible = p > .78;
+  horizon.material.opacity = lastRoom; beamLine.material.opacity = lastRoom * .6;
+  pillars.visible = p > .78;
+  scene.fog.density = .012 - lastRoom * .008;
+
+  const [cp, cl] = at(p);
+  camera.position.set(cp[0] + mouse.sx * 1.5 * still, cp[1] + mouse.sy * .8 * still, cp[2]);
+  look.set(...cl); camera.lookAt(look);
+
+  // text
+  const ph = p < .1 ? 0 : p < .48 ? 1 : p < .84 ? 2 : 3;
+  phaseEls.forEach((el, i) => el.classList.toggle('off', i !== ph));
+  introEl.style.opacity = 1 - smooth(.04, .1, p);
+  hintEl.style.opacity = smooth(.18, .26, p) * (1 - smooth(.6, .7, p));
+  finalEl.classList.toggle('on', p > .93);
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+frame();
+</script>
+</body>
+</html>
